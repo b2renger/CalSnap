@@ -72,11 +72,11 @@ const App: React.FC = () => {
   }, [calendars, duration, searchDays, dayStartHour, dayEndHour, lunchEnabled, lunchStart, lunchEnd]);
 
   return (
-    <div className={`${darkMode ? 'dark' : ''}`}>
+    <div className={`${darkMode ? 'dark' : ''} w-full`}>
         <div className="min-h-screen pb-20 bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
         {/* Header */}
         <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10 transition-colors">
-            <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div className="w-full px-4 md:px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-2">
                 <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -108,11 +108,11 @@ const App: React.FC = () => {
             </div>
         </header>
 
-        <main className="max-w-6xl mx-auto px-4 py-8">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <main className="w-full px-4 md:px-6 py-8">
+            <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8">
             
             {/* Left Sidebar: Controls */}
-            <div className="lg:col-span-4 space-y-6">
+            <div className="space-y-6">
                 
                 {/* Uploader Section */}
                 <section>
@@ -298,7 +298,7 @@ const App: React.FC = () => {
             </div>
 
             {/* Right Content: Results */}
-            <div className="lg:col-span-8">
+            <div className="">
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h2 className="text-xl font-bold text-slate-800 dark:text-white">Available Slots</h2>
@@ -328,7 +328,7 @@ const App: React.FC = () => {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                         {slots.map((slot, idx) => (
                             <SlotCard key={idx} slot={slot} calendars={calendars} />
                         ))}

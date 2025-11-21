@@ -26,25 +26,14 @@
       body {
         font-family: 'Inter', sans-serif;
       }
-      /* Custom scrollbar for cleaner look */
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
-      }
-      .dark ::-webkit-scrollbar-thumb {
-        background: #475569;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-      }
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+      .dark ::-webkit-scrollbar-thumb { background: #475569; }
+      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
-    <!-- Polyfill process.env to prevent runtime crashes in browser environment -->
+    
+    <!-- Polyfill process.env -->
     <script>
       window.process = {
         env: {
@@ -52,26 +41,145 @@
         }
       };
     </script>
-    <!-- Babel for in-browser transpilation -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <script type="importmap">
+    <!-- Babel Standalone -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@18.2.0",
-    "react-dom": "https://esm.sh/react-dom@18.2.0",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-    "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
-    "@google/genai": "https://esm.sh/@google/genai",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/"
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0"
   }
 }
 </script>
 </head>
   <body>
-    <div id="root"></div>
-    <!-- Load the main entry point with Babel -->
-    <script type="text/babel" data-type="module" src="./index.tsx"></script>
+    <div id="root" class="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <div class="flex items-center justify-center h-screen">
+          <div class="text-center animate-pulse">
+              <div class="h-12 w-12 bg-indigo-600 rounded-lg mx-auto mb-4 flex items-center justify-center text-white">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 animate-spin">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
+              </div>
+              <p class="text-slate-500 dark:text-slate-400 font-medium">Loading App...</p>
+          </div>
+        </div>
+    </div>
+
+    <!-- Custom Module Loader -->
+    <script>
+    (async function() {
+        const fileList = [
+            './types.ts',
+            './constants.ts',
+            './services/icsParser.ts',
+            './services/scheduler.ts',
+            './services/geminiService.ts',
+            './components/CalendarUploader.tsx',
+            './components/SlotCard.tsx',
+            './App.tsx',
+            './index.tsx'
+        ];
+
+        const externalImports = {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+            "@google/genai": "https://esm.sh/@google/genai"
+        };
+
+        // Helper to resolve paths (e.g., ../types.ts -> app/types.ts)
+        function resolveImportPath(currentFile, importPath) {
+            if (!importPath.startsWith('.')) return importPath; // External
+
+            // Clean file path
+            const currentParts = currentFile.split('/').slice(0, -1);
+            if (currentParts[0] === '.') currentParts.shift();
+            
+            const importParts = importPath.split('/');
+            
+            for (const part of importParts) {
+                if (part === '.') continue;
+                if (part === '..') {
+                    if (currentParts.length > 0) currentParts.pop();
+                } else {
+                    currentParts.push(part);
+                }
+            }
+            return 'app/' + currentParts.join('/');
+        }
+
+        // Custom Babel Plugin to rewrite imports
+        Babel.registerPlugin('rewrite-imports', {
+            visitor: {
+                ImportDeclaration(path, state) {
+                    const src = path.node.source.value;
+                    if (src.startsWith('.')) {
+                        path.node.source.value = resolveImportPath(state.file.opts.filename, src);
+                    }
+                },
+                ExportAllDeclaration(path, state) {
+                    const src = path.node.source.value;
+                    if (src && src.startsWith('.')) {
+                        path.node.source.value = resolveImportPath(state.file.opts.filename, src);
+                    }
+                },
+                ExportNamedDeclaration(path, state) {
+                    if (path.node.source) {
+                        const src = path.node.source.value;
+                        if (src.startsWith('.')) {
+                            path.node.source.value = resolveImportPath(state.file.opts.filename, src);
+                        }
+                    }
+                }
+            }
+        });
+
+        try {
+            const importMap = { imports: { ...externalImports } };
+            
+            // Fetch and transpile all files
+            await Promise.all(fileList.map(async (file) => {
+                const response = await fetch(file);
+                if (!response.ok) throw new Error(`Failed to load ${file}`);
+                const text = await response.text();
+
+                // Transpile
+                const result = Babel.transform(text, {
+                    presets: ['react', 'typescript'],
+                    plugins: ['rewrite-imports'],
+                    filename: file
+                });
+
+                // Create Blob
+                const blob = new Blob([result.code], { type: 'application/javascript' });
+                const blobUrl = URL.createObjectURL(blob);
+
+                // Clean path for map key (./App.tsx -> app/App.tsx)
+                const mapKey = 'app/' + file.replace(/^\.\//, '');
+                importMap.imports[mapKey] = blobUrl;
+            }));
+
+            // Inject Import Map
+            const mapEl = document.createElement('script');
+            mapEl.type = 'importmap';
+            mapEl.textContent = JSON.stringify(importMap);
+            document.head.appendChild(mapEl);
+
+            // Start App
+            const entryEl = document.createElement('script');
+            entryEl.type = 'module';
+            entryEl.textContent = "import 'app/index.tsx';";
+            document.body.appendChild(entryEl);
+
+        } catch (err) {
+            console.error("Loader Error:", err);
+            document.getElementById('root').innerHTML = `<div class="p-4 text-red-500">Error loading app: ${err.message}</div>`;
+        }
+    })();
+    </script>
   </body>
 </html>
