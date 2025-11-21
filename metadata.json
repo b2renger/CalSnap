@@ -1,0 +1,5 @@
+{
+  "name": "CalSnap - Intelligent Scheduler",
+  "description": "A client-side meeting coordinator that analyzes multiple Outlook calendar exports (.ics) to find the best common time slots.",
+  "requestFramePermissions": []
+}
