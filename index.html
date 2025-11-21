@@ -57,6 +57,7 @@
 </head>
   <body>
     <div id="root" class="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <!-- Loading State -->
         <div class="flex items-center justify-center h-screen">
           <div class="text-center animate-pulse">
               <div class="h-12 w-12 bg-indigo-600 rounded-lg mx-auto mb-4 flex items-center justify-center text-white">
@@ -93,22 +94,30 @@
 
         // Helper to resolve paths (e.g., ../types.ts -> app/types.ts)
         function resolveImportPath(currentFile, importPath) {
-            if (!importPath.startsWith('.')) return importPath; // External
+            if (!importPath.startsWith('.')) return importPath;
 
-            // Clean ./ from start of currentFile (e.g. ./services/file.ts -> services/file.ts)
-            const cleanCurrent = currentFile.replace(/^\.\//, '');
+            // Remove leading ./ from currentFile
+            const currentPath = currentFile.replace(/^\.\//, '');
             
-            // Use URL for robust resolution. 
-            // We create a fake base. 
-            // If currentFile is "services/scheduler.ts", base is "http://dummy/app/services/scheduler.ts"
-            const baseUrl = new URL('http://dummy/app/' + cleanCurrent);
+            // Get directory of current file
+            const currentDir = currentPath.split('/').slice(0, -1);
             
-            // Resolve importPath relative to base.
-            // if importPath is "../types.ts", it resolves to "http://dummy/app/types.ts"
-            const resolvedUrl = new URL(importPath, baseUrl);
+            // Split import path
+            const importParts = importPath.split('/');
             
-            // Remove leading slash from pathname to get "app/types.ts"
-            return resolvedUrl.pathname.slice(1);
+            // Resolve
+            const result = [...currentDir];
+            
+            for (const part of importParts) {
+                if (part === '.') continue;
+                if (part === '..') {
+                    if (result.length > 0) result.pop();
+                } else {
+                    result.push(part);
+                }
+            }
+            
+            return 'app/' + result.join('/');
         }
 
         // Custom Babel Plugin to rewrite imports
@@ -158,7 +167,6 @@
                 const blobUrl = URL.createObjectURL(blob);
 
                 // Clean path for map key (./App.tsx -> app/App.tsx)
-                // This MUST match the output of resolveImportPath
                 const mapKey = 'app/' + file.replace(/^\.\//, '');
                 importMap.imports[mapKey] = blobUrl;
             }));
