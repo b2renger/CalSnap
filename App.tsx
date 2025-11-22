@@ -12,6 +12,10 @@ const App: React.FC = () => {
 
   const [calendars, setCalendars] = useState<ParsedCalendar[]>([]);
   
+  // URL Import State
+  const [urlInput, setUrlInput] = useState<string>('');
+  const [isUrlLoading, setIsUrlLoading] = useState<boolean>(false);
+  
   // Configuration State
   const [duration, setDuration] = useState<number>(60); // minutes
   const [searchDays, setSearchDays] = useState<number>(5);
@@ -47,6 +51,45 @@ const App: React.FC = () => {
     setCalendars(prev => [...prev, ...newCalendars]);
   };
 
+  const handleUrlAdd = async () => {
+    if (!urlInput) return;
+    setIsUrlLoading(true);
+    try {
+      const response = await fetch(urlInput);
+      if (!response.ok) throw new Error('Failed to fetch');
+      const text = await response.text();
+      const events = parseICS(text);
+      
+      const color = CALENDAR_COLORS[calendars.length % CALENDAR_COLORS.length];
+      
+      // Try to guess name from URL
+      let name = 'Web Calendar';
+      try {
+          const urlObj = new URL(urlInput);
+          const parts = urlObj.pathname.split('/');
+          const lastPart = parts[parts.length - 1];
+          if (lastPart && lastPart.length > 2) {
+              name = lastPart.replace('.ics', '');
+          } else {
+              name = urlObj.hostname;
+          }
+      } catch(e) {}
+
+      setCalendars(prev => [...prev, {
+        id: Math.random().toString(36).substring(7),
+        name: name,
+        color,
+        initials: MOCK_INITIALS(name),
+        events
+      }]);
+      setUrlInput('');
+    } catch (e) {
+      alert('Could not load calendar. Please check the URL and ensure the server allows CORS (Cross-Origin Resource Sharing).');
+    } finally {
+      setIsUrlLoading(false);
+    }
+  };
+
   const handleRemoveCalendar = (id: string) => {
     setCalendars(prev => prev.filter(c => c.id !== id));
   };
@@ -70,6 +113,8 @@ const App: React.FC = () => {
     };
     return findCommonSlots(calendars, config);
   }, [calendars, duration, searchDays, dayStartHour, dayEndHour, lunchEnabled, lunchStart, lunchEnd]);
+
+  const LOOK_AHEAD_OPTIONS = [3, 5, 7, 14, 21, 28, 35, 42];
 
   return (
     <div className={`${darkMode ? 'dark' : ''} w-full`}>
@@ -119,6 +164,35 @@ const App: React.FC = () => {
                 <h2 className="text-sm font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wide mb-3">Calendars</h2>
                 <CalendarUploader onUpload={handleUpload} />
                 
+                {/* URL Input */}
+                <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase">Add via URL</label>
+                    <div className="flex gap-2">
+                        <input 
+                            type="url" 
+                            value={urlInput}
+                            onChange={(e) => setUrlInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleUrlAdd()}
+                            placeholder="https://example.com/cal.ics"
+                            className="flex-1 text-sm p-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-white placeholder-slate-400"
+                        />
+                        <button 
+                            onClick={handleUrlAdd}
+                            disabled={isUrlLoading || !urlInput}
+                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md text-sm font-medium transition-colors flex items-center justify-center min-w-[40px]"
+                        >
+                            {isUrlLoading ? (
+                                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                            )}
+                        </button>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1 ml-1">Note: Server must support CORS.</p>
+                </div>
+
                 {/* Calendar List */}
                 <div className="mt-4 space-y-2">
                     {calendars.map(cal => (
@@ -276,12 +350,12 @@ const App: React.FC = () => {
 
                     <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Look Ahead: {searchDays} days</label>
-                        <div className="flex gap-2">
-                            {[3, 5, 7, 14].map(d => (
+                        <div className="grid grid-cols-4 gap-2">
+                            {LOOK_AHEAD_OPTIONS.map(d => (
                                 <button
                                     key={d}
                                     onClick={() => setSearchDays(d)}
-                                    className={`flex-1 py-1.5 text-xs font-medium rounded border transition-colors ${
+                                    className={`py-1.5 text-xs font-medium rounded border transition-colors ${
                                         searchDays === d 
                                         ? 'bg-indigo-50 dark:bg-indigo-900/40 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300' 
                                         : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500'
